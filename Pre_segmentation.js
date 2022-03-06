@@ -1,6 +1,10 @@
+/*
+Créé les segmentation mask
+(A besoin du folder crazybio du Jen Christophe pour fonctionner)
+*/
 //////////////////////////////////////// PARAMETERS ////////////////////////////////////////
-const radius = 15; // Min filter
-const sigma = 10; // Gaussian blurr filter
+const radius = 15; // Min filter (à vérifier quelle valeur choisir)
+const sigma = 5; // Gaussian blurr filter (à vérifier quelle valeur choisir)
 
 const min_size = 3000;
 //////////////////////////////////////// IMPORTS ////////////////////////////////////////
@@ -19,9 +23,10 @@ IJ.run(mask, "Invert", "");
 // Blur
 IJ.run(mask, "Minimum...", "radius="+radius.toString());
 IJ.run(mask, "Gaussian Blur...", "sigma="+ sigma.toString());
-
+//mask.show();
+//aaaa
 // Threshold
-IJ.setAutoThreshold(mask, "Yen");
+IJ.setAutoThreshold(mask, "Otsu");
 IJ.run(mask, "Convert to Mask", "");
 // Fill holes
 IJ.run(mask, "Fill Holes", "");
