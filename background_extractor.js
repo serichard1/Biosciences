@@ -26,7 +26,6 @@ function stretchBG(imp,size){
 function patchworkBG(imp,size){
     let w = imp.getWidth();
     let h = imp.getHeight();
-
     let w_copies = Math.ceil(size/w);
     let h_copies = Math.ceil(size/h);
     
@@ -37,7 +36,11 @@ function patchworkBG(imp,size){
     
     let ip = new ImagePlus();
     ip.setStack(stack)
-    IJ.run(ip, "Make Montage...", "columns=" + w_copies +" rows=" + h_copies + " scale=0.25");
+    IJ.run(ip, "Make Montage...", "columns=" + w_copies +" rows=" + h_copies + " scale=1");
+    let montage = IJ.getImage();
+    IJ.run(montage, "Canvas Size...", "width=" + size + " height=" + size + " position=Center");
+
+    return montage;
 }
 
 function histogramBG(imp,size){
