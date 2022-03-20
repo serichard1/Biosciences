@@ -1,6 +1,6 @@
 //////////////////////////////////////// PARAMETERS ////////////////////////////////////////
 const SIZE = 900;
-const TYPE = "patchwork" // "stretch" / "patchwork" / "histogram"
+const TYPE = "histogram" // "stretch" / "patchwork" / "histogram"
 //////////////////////////////////////// IMPORTS ////////////////////////////////////////
 const IJ_PLUGINS = IJ.getDir('plugins');
 load(`${IJ_PLUGINS}/javascript/nashorn_polyfill.js`);
@@ -43,9 +43,31 @@ function patchworkBG(imp,size){
     return montage;
 }
 
+function random_value(table, total){
+    let random = Math.floor(Math.random() * total);
+    for (let i = 0; i < table.length; i++) {
+        random -= table[i];
+        if (random < 0) {
+            return i;
+        }
+    }
+}
+
 function histogramBG(imp,size){
     //Extract the histogram of imp
+    let histogram = new HistogramPlot();
+    histogram.draw("hist",imp,256)
+    let table = histogram.getHistogram();
+    let total = imp.getWidth() * imp.getHeight()
+
     //Uses that histogram to generate a random image
+    let ip = new ByteProcessor(size,size);
+    for (let i = 0 ; i < size*size ; i++){
+        let pix = random_value(table,total) ;
+        ip.set(i,pix);
+    }
+    
+    return new ImagePlus("background", ip);
 }
 
 //////////////////////////////////////// MAIN ////////////////////////////////////////
