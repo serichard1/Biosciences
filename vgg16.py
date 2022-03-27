@@ -17,7 +17,7 @@ transform = transforms.Compose([
     ])
 
 trainData = dsets.ImageFolder('./Data/TrainSet', transform)
-testData = dsets.ImageFolder('./Data', transform)
+testData = dsets.ImageFolder('./Data/Test', transform)
 
 trainLoader = torch.utils.data.DataLoader(dataset=trainData, batch_size=BATCH_SIZE, shuffle=True)
 testLoader = torch.utils.data.DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=False)
