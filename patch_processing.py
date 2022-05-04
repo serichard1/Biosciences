@@ -36,7 +36,6 @@ def stats(patches) :
     plt.show()
     
 
-
 def save(patches, path, name):
     for i in range(len(patches)):
         patch = patches[i].astype('uint16')
