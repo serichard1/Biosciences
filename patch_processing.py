@@ -11,10 +11,15 @@ def extract(path, size, patch_count) :
     """
     patches = np.ndarray((0,size,size))
     for file in listdir(path) :
-        img = io.imread(path+"/"+file)
-        new_patches = image.extract_patches_2d(img, (size,size),max_patches=patch_count)
+        new_patches = extract_singular(path+"/"+file, size, patch_count)
         patches = np.concatenate((patches, new_patches))
     return patches
+
+def extract_singular(path, size, patch_count) :
+    img = io.imread(path)
+    new_patches = image.extract_patches_2d(img, (size,size),max_patches=patch_count)
+    return new_patches
+
 
 def filter(patches,size,seuil) :
     out = np.ndarray((0,size,size))
