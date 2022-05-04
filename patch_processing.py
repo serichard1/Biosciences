@@ -5,14 +5,17 @@ from sklearn.feature_extraction import image
 from os import listdir
 import matplotlib.pyplot as plt
 
-def extract(path, size, patch_count) :
-    """
-    Extrait <patch_count> patches de dimension <size>*<size> de chaque image située dans le dossier à l'adresse <path>
-    """
+def extract_multiple(path, size, patch_count, verbose = False) :
     patches = np.ndarray((0,size,size))
+    i = 0
+    imax = len(listdir(path))
     for file in listdir(path) :
         new_patches = extract_singular(path+"/"+file, size, patch_count)
         patches = np.concatenate((patches, new_patches))
+        i += 1
+        if verbose and i%10 == 0 :
+            
+            print("%i/%i"%(i,imax))
     return patches
 
 def extract_singular(path, size, patch_count) :
@@ -21,12 +24,14 @@ def extract_singular(path, size, patch_count) :
     return new_patches
 
 
-def filter(patches,size,seuil) :
-    out = np.ndarray((0,size,size))
+def filter(patches,size,seuil, verbose = False) :
+    boolarray = []
     for i in range(len(patches)) :
-        if np.mean(patches[i]) > seuil :
-            out = np.concatenate([out, [patches[i]]])
-    return out
+        if verbose and i%1000 == 0 :
+            print("%i/%i"%(i,len(patches)))
+        boolarray.append(np.mean(patches[i]) > seuil)
+            
+    return patches[boolarray]
 
 def stats(patches) :
     print("Il y a %s patches" %(len(patches)))
@@ -40,9 +45,10 @@ def stats(patches) :
     plt.plot(classes[0:-1], histogramme)
     plt.show()
     
-
-def save(patches, path, name):
+def save(patches, path, name, verbose = False):
     for i in range(len(patches)):
+        if verbose and i%1000 == 0 :
+            print("%i/%i"%(i,len(patches)))
         patch = patches[i].astype('uint16')
         true_path = path+"/"+name+"_"+str(i)+".png"
         imwrite(true_path, patch)

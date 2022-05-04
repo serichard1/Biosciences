@@ -1,16 +1,3 @@
-"""
-import torch.nn as nn
-from sklearn.feature_extraction import image
-import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
-import numpy as np
-
-
-from skimage import io
-
-"""
-
-
 import torch as T
 import torch.nn.functional as F
 import torchvision.transforms as transforms
@@ -20,46 +7,38 @@ from os import listdir
 from os.path import isdir
 import sys
 
-
-
 import patch_processing as PP
 from customNet import Net
 
 def bayesian_inference(H, E) :
-
     # P(A|B) = (P(B|A)*P(A))/P(B)
-    # P(A|B) Probabilité à posteriori que l'hypothèse A0 soit vraie (ce que l'on cherche à calculer)
-    # P(B|A) Probabilité que l'hypothèse soit vraie, selon le résultat d'un évenement (paramètre E pour évenement)
-    # P(A) = Probabilité à prioiri que l'hypothèse A0 est vraie (paramètre H pour hypothèse)
-    # P(B) = Probabilité de l'évenement, indépendament de l'hypothèse
-         # En supposant que les seuls hypothèse sont A0 et A1 :
-         #P(B) = P(B|A0)*P(A0|B) + P(B|A1)
-        
-    # On ne fait pas très confiance à la preuve 
+    # Seulement 2 hypothèses oposée, donc P(B) = P(B|A)*P(A) + (1-P(B|A))*(1-P(A))
+
+
+    # On réduit le poids de l'évenement (notre réseau se trompant parfois)
     confiance = 0.5
     E = E*confiance + (1-confiance)/2
-    # biais
+
+    # Notre réseau étant biaisé en faveur des mitochondries fragmentées, on corrige ce biais
     E = E*0.975
-    
     
     return (H * E) / (H * E + (1-H)*(1-E))
 
-def predictPatches(path,img_name,size,number_patches,threshold):
-    transform = transforms.Compose([transforms.ToTensor()])
+def predictPatches(net,path,img_name,size,number_patches,threshold):
+    # Pour chaque patch d'une image, prédit la probabilité que le patch contiennent une mitochondrie fragmentée
 
-    predicted_list = []
-    
+    #Extraction des patches de l'image
     patches = PP.extract_singular(path+"/"+img_name, size, number_patches)
     patches = PP.filter(patches, size, threshold)
     
+    transform = transforms.Compose([transforms.ToTensor()])
+    predicted_list = []
     # pour chacun des patch
     for i in range(len(patches)):
         # on applique les mêmes transformations et conditions que pour les images du training
         patches[i] = patches[i].astype('uint16')
-        
         patch = Image.fromarray(patches[i])
         patch = patch.convert(mode='RGB')
-
         image_tensor = transform(patch)
         image_tensor = image_tensor.unsqueeze_(0)
             
@@ -74,9 +53,10 @@ def predictPatches(path,img_name,size,number_patches,threshold):
                     
     return predicted_list
 
-def predictImage(path,img_name,size,number_patches,threshold) :
+def predictImage(net,path,img_name,size,number_patches,threshold) :
+    #A partir des prédiction sur ses patch, prédit l'état d'une image
     print(img_name + " : ")
-    predicted_list = predictPatches(path,img_name,size,number_patches,threshold)
+    predicted_list = predictPatches(net,path,img_name,size,number_patches,threshold)
     
     if len(predicted_list) == 0 :
         print("No prediction can be made")
@@ -100,7 +80,8 @@ def predictImage(path,img_name,size,number_patches,threshold) :
         print("FRAGMENTED (%s)" %(consensus_prediction))
     return consensus_prediction, healthy_patches, fragmented_patches
 
-def predictFolder(path,size,number_patches,threshold, verbose = False):
+def predictFolder(net,path,size,number_patches,threshold, verbose = False):
+    #à partir des prédictions sur ses images, prédit l'état d'un dossier
     csv = ""
     healthy = 0
     fragmented = 0
@@ -111,7 +92,7 @@ def predictFolder(path,size,number_patches,threshold, verbose = False):
     average_prediction = 0
     # pour chaque image du répertoire
     for img_name in listdir(path) :
-        res = predictImage(path,img_name,size,number_patches,threshold)
+        res = predictImage(net,path,img_name,size,number_patches,threshold)
         healthy_patches += res[1]
         fragmented_patches += res[2]
         
@@ -190,35 +171,32 @@ def predictFolder(path,size,number_patches,threshold, verbose = False):
         print(choice + ".csv à bien été sauvegardé dans " + path)
         
 
-
-
 # load the trained model
-net = T.load("trained_net_test")
+net = T.load("trained_net")
 net.to('cpu')
 net.eval()
 
-path = "./Data/Images-Cytation/Experiment2_210326/Bad/Prediction"
-path = "./Data/Images-Cytation"
 
-#path = "./Data/All_good"
+#parameters ( except path and number_patches, should be the same as the parameters used  for the learning)
+path = "./Data/Images-Cytation"
 size = 320
 number_patches = 10
 threshold = 3
 
-
+#main loop
 while True :
     print("Veuillez entrer le nom du dossier de l'experience, ")
     folder = input("ou tapez 0 pour sortir du programme : ")
     if folder == "0" :
         sys.exit()
     if isdir(path + "/" + folder + "/Prediction") :
-        predictFolder(path+"/"+folder + "/Prediction",size,number_patches,threshold)
+        predictFolder(net,path+"/"+folder + "/Prediction",size,number_patches,threshold)
     elif isdir(path + "/" + folder) :
-        print("ATTENTION ! Il n'y a pas de sous-dossier \"Prediction\", les images n'ont probablement pas été binarisées")
-        print("Pour binariser les images, veuillez utiliser MitoS_Main_GPU.sh (https://github.com/MitoSegNet/MitoS-segmentation-tool)")
+        print("ATTENTION ! Il n'y a pas de sous-dossier \"Prediction\", les images n'ont probablement pas été segmentées")
+        print("Pour segmenter les images, veuillez utiliser MitoS_Main_GPU.sh (https://github.com/MitoSegNet/MitoS-segmentation-tool)")
         choice = input("Si le dossier contient toutefois des images binarisées par MitoS_Main_GPU.sh, tapez \"oui\" : ")
         if choice in ("oui", "Oui", "OUI") :
-            predictFolder(path+"/"+folder,size,number_patches,threshold)
+            predictFolder(net,path+"/"+folder,size,number_patches,threshold)
             
     else :
         print("Le dossier n'existe pas !")
